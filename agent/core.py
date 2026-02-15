@@ -9,8 +9,9 @@ from .memory import ConversationMemory
 logger = logging.getLogger(__name__)
 
 class Agent:
-    def __init__(self, llm: LLMClient):
+    def __init__(self, llm: LLMClient, memory: ConversationMemory):
         self.llm = llm
+        self.memory = memory
         self.tools: Dict[str, Dict[str, Any]] = {}
         self.system_prompt = (
             "You are GarvisClaw, an intelligent AI agent designed to assist users. "
@@ -32,14 +33,13 @@ class Agent:
         self.tools[name] = {"func": func, "description": description}
         logger.info(f"Registered tool: {name}")
 
-    def _get_tools_desc(self, available_tools: List[str] = None) -> str:
+    def _get_tools_desc(self) -> str:
         desc = []
         for name, tool in self.tools.items():
-            if available_tools is None or name in available_tools:
-                desc.append(f"- {name}: {tool['description']}")
+            desc.append(f"- {name}: {tool['description']}")
         return "\n".join(desc)
 
-    async def process(self, user_input: str, memory: ConversationMemory, update_callback: Callable[[str, bool], Any] = None, allowed_tools: List[str] = None):
+    async def process(self, user_input: str, update_callback: Callable[[str, bool], Any] = None):
         """
         Process user input.
         update_callback(text, is_status)
@@ -47,14 +47,14 @@ class Agent:
         if update_callback:
             await update_callback("Thinking...", True)
 
-        memory.add_message("user", user_input)
+        self.memory.add_message("user", user_input)
 
         step = 0
         max_steps = 5
 
         while step < max_steps:
-            messages = [{"role": "system", "content": self.system_prompt.format(tools_desc=self._get_tools_desc(allowed_tools))}]
-            messages.extend(memory.get_messages())
+            messages = [{"role": "system", "content": self.system_prompt.format(tools_desc=self._get_tools_desc())}]
+            messages.extend(self.memory.get_messages())
 
             # Call LLM
             response_text = ""
@@ -79,13 +79,6 @@ class Agent:
                 tool_name = tool_call.get("tool")
                 args = tool_call.get("args", {})
 
-                # Check if tool is allowed
-                if allowed_tools is not None and tool_name not in allowed_tools:
-                     memory.add_message("assistant", response_text)
-                     memory.add_message("system", f"Tool '{tool_name}' is not allowed or not available.")
-                     step += 1
-                     continue
-
                 if tool_name in self.tools:
                     if update_callback:
                         await update_callback(f"Executing {tool_name}...", True)
@@ -101,8 +94,8 @@ class Agent:
                         tool_output = f"Tool '{tool_name}' failed: {str(e)}"
 
                     # Feed back to LLM
-                    memory.add_message("assistant", response_text)
-                    memory.add_message("system", tool_output)
+                    self.memory.add_message("assistant", response_text)
+                    self.memory.add_message("system", tool_output)
                     step += 1
 
                     if update_callback:
@@ -110,10 +103,10 @@ class Agent:
 
                     continue # Loop again
                 else:
-                    memory.add_message("assistant", response_text)
+                    self.memory.add_message("assistant", response_text)
                     break
             else:
-                memory.add_message("assistant", response_text)
+                self.memory.add_message("assistant", response_text)
                 break
 
     def _parse_tool_call(self, text: str) -> Union[Dict, None]:

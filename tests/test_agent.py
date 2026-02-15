@@ -34,12 +34,12 @@ class MockLLM(LLMClient):
 async def test_agent_simple_flow():
     llm = MockLLM()
     memory = ConversationMemory()
-    agent = Agent(llm) # Removed memory from init
+    agent = Agent(llm, memory)
 
     llm.add_response("Hello user!")
 
     # Run
-    await agent.process("Hi", memory=memory) # Added memory to process
+    await agent.process("Hi")
 
     msgs = memory.get_messages()
     # 1. User
@@ -52,7 +52,7 @@ async def test_agent_simple_flow():
 async def test_agent_tool_use():
     llm = MockLLM()
     memory = ConversationMemory()
-    agent = Agent(llm) # Removed memory from init
+    agent = Agent(llm, memory)
 
     # Register dummy tool
     async def dummy_tool(arg):
@@ -65,7 +65,7 @@ async def test_agent_tool_use():
     # 2. LLM gets result and responds final
     llm.add_response("Final answer.")
 
-    await agent.process("Do dummy test", memory=memory) # Added memory to process
+    await agent.process("Do dummy test")
 
     msgs = memory.get_messages()
     # 1. User

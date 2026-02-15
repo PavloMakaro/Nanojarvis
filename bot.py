@@ -24,14 +24,11 @@ logging.basicConfig(
 TELEGRAM_TOKEN = os.getenv("BOT_TOKEN")
 DEEPSEEK_KEY = os.getenv("DEEPSEEK_API_KEY")
 GROQ_KEY = os.getenv("GROQ_API_KEY")
-try:
-    ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
-except ValueError:
-    ADMIN_ID = 0
 
 # Initialize Agent
 llm_client = LLMClient(DEEPSEEK_KEY, GROQ_KEY)
-agent = Agent(llm_client)
+memory = ConversationMemory()
+agent = Agent(llm_client, memory)
 
 # Register Tools
 agent.register_tool("search_web", web_search.search_web, "Search the web. Args: query (str), count (int, default 5).")
@@ -41,17 +38,7 @@ agent.register_tool("read_diary", diary.read_diary, "Read diary. Args: lines (in
 agent.register_tool("add_reminder", scheduler.add_reminder, "Add reminder. Args: chat_id (int), message (str), delay_seconds (int).")
 agent.register_tool("create_module", module_generator.create_module, "Create python module. Args: filename (str), code (str).")
 
-# Global Memory Storage: chat_id -> ConversationMemory
-chat_memories = {}
-
-def get_memory(chat_id):
-    if chat_id not in chat_memories:
-        chat_memories[chat_id] = ConversationMemory()
-    return chat_memories[chat_id]
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
-    memory = get_memory(chat_id)
     memory.clear()
     await update.message.reply_text("Hello! I am GarvisClaw. How can I help you today?")
 
@@ -72,19 +59,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return
             await streamer.update(text)
 
+    # Inject chat_id for scheduler if user mentions reminder
+    # Or just let agent ask for it?
+    # Better: Append context info to prompt.
     chat_id = update.effective_chat.id
-    user_id = update.effective_user.id
-    memory = get_memory(chat_id)
+    # We can prepend this to system prompt or user message.
+    # But `agent.process` takes string.
+    # We'll just append it to user text internally if needed, or rely on agent knowing it?
+    # Agent doesn't know chat_id unless passed.
+    # Let's append: "[Context: chat_id={chat_id}]"
 
-    # Determine allowed tools
-    allowed_tools = ["search_web", "recognize_image", "write_diary", "read_diary", "add_reminder"]
-    if user_id == ADMIN_ID:
-        allowed_tools.append("create_module")
-
-    full_text = f"{user_text}\n[System Context: chat_id={chat_id}, user_id={user_id}]"
+    full_text = f"{user_text}\n[System Context: chat_id={chat_id}]"
 
     try:
-        await agent.process(full_text, memory=memory, update_callback=callback, allowed_tools=allowed_tools)
+        await agent.process(full_text, update_callback=callback)
     except Exception as e:
         logging.error(f"Error processing message: {e}")
         await streamer.update(f"An error occurred: {e}")
@@ -108,17 +96,8 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     prompt = f"I sent an image. It is saved at: {file_path}. Please analyze it using recognize_image tool."
 
-    chat_id = update.effective_chat.id
-    user_id = update.effective_user.id
-    memory = get_memory(chat_id)
-
-    # Determine allowed tools
-    allowed_tools = ["search_web", "recognize_image", "write_diary", "read_diary", "add_reminder"]
-    if user_id == ADMIN_ID:
-        allowed_tools.append("create_module")
-
     try:
-        await agent.process(prompt, memory=memory, update_callback=callback, allowed_tools=allowed_tools)
+        await agent.process(prompt, update_callback=callback)
     except Exception as e:
         logging.error(f"Error processing photo: {e}")
         await streamer.update(f"An error occurred: {e}")
