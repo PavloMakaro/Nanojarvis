@@ -104,8 +104,11 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     finally:
         await streamer.stop()
 
+async def post_init(application):
+    scheduler.start_scheduler()
+
 if __name__ == '__main__':
-    application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    application = ApplicationBuilder().token(TELEGRAM_TOKEN).post_init(post_init).build()
 
     # Setup Scheduler Callback
     async def notification_sender(chat_id, message):

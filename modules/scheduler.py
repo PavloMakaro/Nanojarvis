@@ -5,7 +5,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 scheduler = AsyncIOScheduler()
-scheduler.start()
+
+def start_scheduler():
+    if not scheduler.running:
+        scheduler.start()
+        logger.info("Scheduler started.")
 
 # Callback function to send messages
 _notification_callback = None
