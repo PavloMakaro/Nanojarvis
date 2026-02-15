@@ -22,8 +22,14 @@ logging.basicConfig(
 
 # API Keys
 TELEGRAM_TOKEN = os.getenv("BOT_TOKEN")
+if TELEGRAM_TOKEN:
+    TELEGRAM_TOKEN = TELEGRAM_TOKEN.strip()
 DEEPSEEK_KEY = os.getenv("DEEPSEEK_API_KEY")
 GROQ_KEY = os.getenv("GROQ_API_KEY")
+
+if not TELEGRAM_TOKEN:
+    logging.critical("BOT_TOKEN is missing or empty in .env")
+    exit(1)
 
 # Initialize Agent
 llm_client = LLMClient(DEEPSEEK_KEY, GROQ_KEY)
