@@ -10,10 +10,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("VERIFY")
 
 # Keys
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-DEEPSEEK_KEY = os.getenv("DEEPSEEK_KEY")
-GROQ_KEY = os.getenv("GROQ_KEY")
-LANGSEARCH_KEY = os.getenv("LANGSEARCH_KEY")
+TELEGRAM_TOKEN = os.getenv("BOT_TOKEN")
+DEEPSEEK_KEY = os.getenv("DEEPSEEK_API_KEY")
+GROQ_KEY = os.getenv("GROQ_API_KEY")
+LANGSEARCH_KEY = os.getenv("LANGSEARCH_API_KEY")
 
 async def check_telegram():
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getMe"

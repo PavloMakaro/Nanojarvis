@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 logger = logging.getLogger(__name__)
 
 load_dotenv()
-OCR_KEY = os.getenv("OCR_KEY")
+OCR_KEY = os.getenv("OCR_API_KEY")
 
 async def recognize_image(file_path: str) -> str:
     """

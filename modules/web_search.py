@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 logger = logging.getLogger(__name__)
 
 load_dotenv()
-LANGSEARCH_KEY = os.getenv("LANGSEARCH_KEY")
+LANGSEARCH_KEY = os.getenv("LANGSEARCH_API_KEY")
 
 async def search_web(query: str, count: int = 5) -> str:
     """
